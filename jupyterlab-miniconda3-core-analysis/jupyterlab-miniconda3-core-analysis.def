@@ -2,7 +2,7 @@
 Bootstrap:	docker
 From: debian:bullseye-slim
 
-# note that we're in /bin/sh by default
+# note that we are in /bin/sh by default
 %apprun spool-jupyter
 
 . ~/.bashrc
