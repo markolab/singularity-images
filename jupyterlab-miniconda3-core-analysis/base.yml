@@ -1,0 +1,11 @@
+# run: conda env create --file base.yml
+name: base
+dependencies:
+  - ipywidgets
+  - jupyterlab
+  - nb_conda_kernels
+  - pip
+  - python==3.10
+  - pip:
+      - black
+      - nbdime

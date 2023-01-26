@@ -1,0 +1,90 @@
+# modeled after https://github.com/ContinuumIO/docker-images/blob/master/miniconda3/debian/Dockerfile
+Bootstrap:	docker
+From: debian:bullseye-slim
+
+# note that we're in /bin/sh by default
+%apprun spool-jupyter
+
+. ~/.bashrc
+hname=$(hostname -I | cut -f 1 -d " ")
+# if we pass an argument that becomes the jupyter port, else assign randomly
+if [ ! -z "$1" ]; then
+	port=$1
+else
+	port=$(shuf -i 20000-30000 -n 1)
+fi
+jupyter lab --no-browser --port=${port} --ip=0.0.0.0 --NotebookApp.custom_display_url="http://$hname:$port"
+
+%apprun spool-shell -c /bin/bash
+source ~/.bashrc
+
+# make sure the env points to conda
+%environment
+    
+export PATH=/opt/conda/bin:${PATH}
+# export SHELL=/bin/bash
+
+# copy over environment files
+%files
+
+base.yml
+datastack.yml
+
+# install basics + miniconda
+%post
+
+# update apt
+apt-get update && apt-get -y upgrade
+
+# github cli prereqs
+type -p curl >/dev/null || apt install curl -y
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+&& apt update \
+&& apt install gh -y
+
+# install essentials:
+# note that kitty-terminfo is only needed for kitty terminal users
+apt-get -y install \
+build-essential \
+bzip2 \
+ca-certificates \
+git \
+htop \
+iproute2 \
+kitty-terminfo \
+libglib2.0-0 \
+libsm6 \
+libxext6 \
+libxrender1 \
+procps \
+vim \
+wget
+
+# download latest miniconda3
+UNAME_M="$(uname -m)" 
+MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-${UNAME_M}.sh";
+wget "${MINICONDA_URL}" -O miniconda.sh -q
+
+# stage and install miniconda, then cleanup
+mkdir -p /opt
+bash miniconda.sh -b -p /opt/conda
+rm miniconda.sh
+
+# make sure bash is setup correctly
+ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh
+echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc 
+echo "conda activate base" >> ~/.bashrc
+
+# install conda environments
+# conda activate base
+/opt/conda/bin/conda update -n base -c defaults conda
+/opt/conda/bin/conda env update --file base.yml --prune
+/opt/conda/bin/conda env create -f datastack.yml
+/opt/conda/bin/conda init bash
+
+# clean conda
+find /opt/conda/ -follow -type f -name '*.a' -delete
+find /opt/conda/ -follow -type f -name '*.js.map' -delete
+/opt/conda/bin/conda clean -afy
