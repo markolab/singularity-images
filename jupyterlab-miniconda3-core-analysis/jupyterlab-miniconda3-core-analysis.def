@@ -5,7 +5,7 @@ From: debian:bullseye-slim
 # note that we are in /bin/sh by default
 %apprun spool-jupyter
 
-. ~/.bashrc
+. /root/.bashrc
 hname=$(hostname -I | cut -f 1 -d " ")
 # if we pass an argument that becomes the jupyter port, else assign randomly
 if [ ! -z "$1" ]; then
@@ -16,7 +16,7 @@ fi
 jupyter lab --no-browser --port=${port} --ip=0.0.0.0 --NotebookApp.custom_display_url="http://$hname:$port"
 
 %apprun spool-shell -c /bin/bash
-source ~/.bashrc
+. /root/.bashrc
 
 # make sure the env points to conda
 %environment
